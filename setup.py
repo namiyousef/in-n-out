@@ -24,7 +24,9 @@ setup(
     author_email='namiyousef@hotmail.com',
     url='https://github.com/namiyousef/in-n-out',
     install_requires=[
-        'fastapi[all]'
+        'fastapi[all]',
+        'Flask-SQLAlchemy',
+        'psycopg2-binary'
     ],
     packages=find_packages(exclude=('tests*', 'experiments*')),
     #package_data={'': ['api/specs/api.yaml']},
