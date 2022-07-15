@@ -1,4 +1,5 @@
 import sqlalchemy as db
+import pandas as pd
 
 class PostgresClient:
     def __init__(self, username, password, host, port, name):
@@ -13,5 +14,7 @@ class PostgresClient:
         self.engine = db.create_engine(self.db_uri)
         self.con = self.engine.connect()
 
-    def query(self):
-        pass
+    def query(self, query):
+        result = self.con.execute(query).fetchall()
+        df = pd.DataFrame(result)
+        return df
