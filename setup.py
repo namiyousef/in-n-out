@@ -26,7 +26,8 @@ setup(
     install_requires=[
         'fastapi[all]',
         'Flask-SQLAlchemy',
-        'psycopg2-binary'
+        'psycopg2-binary',
+        'pandas'
     ],
     packages=find_packages(exclude=('tests*', 'experiments*')),
     #package_data={'': ['api/specs/api.yaml']},
