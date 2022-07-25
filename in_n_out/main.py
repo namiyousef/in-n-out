@@ -1,12 +1,15 @@
-from fastapi import FastAPI, UploadFile
-from pydantic import BaseModel
+from fastapi import FastAPI, UploadFile, File, Depends, Form, Query
+
+from pydantic import BaseModel, Json
 from typing import Union, List
 import sqlalchemy as db
 import pandas as pd
 from in_n_out.manager import Manager
 from in_n_out.client import PostgresClient
+import io
 
 app = FastAPI()
+
 
 class QueryParams(BaseModel):
     columns: List[str] = ['*']
@@ -22,17 +25,21 @@ class IngestionParams(BaseModel):
     host: str
     database_name: str
 
+
 class InsertionParams(BaseModel):
     sql_query: str
     query: QueryParams
     username: str
     password: str
-    port: int
+    port: int = 5432
     host: str
     database_name: str
+    table_name: str
+    conflict_resolution_strategy: str = 'replace'
+
 
 @app.post("/ingest")
-def ingest(ingestion_params: IngestionParams, limit: int = -1,):
+def ingest(ingestion_params: IngestionParams, limit: int = -1, ):
     ingestion_params = ingestion_params.dict()
 
     DB_USER = ingestion_params['username']
@@ -48,28 +55,39 @@ def ingest(ingestion_params: IngestionParams, limit: int = -1,):
     return df
 
 @app.post("/insert")
-def insert(insertion_params: InsertionParams,
-           data_files: UploadFile,
-           limit: int = -1, ):
-
+async def insert(
+        insertion_params: Json[InsertionParams],
+                 file: UploadFile = File(...),
+                 limit: int = -1, ):
     insertion_params = insertion_params.dict()
+
+    content = await file.read()
 
     DB_USER = insertion_params['username']
     DB_PASSWORD = insertion_params['password']
     DB_HOST = insertion_params['host']
     DB_PORT = insertion_params['port']
     DB_NAME = insertion_params['database_name']
+    table_name = insertion_params['table_name']
+    conflict_resolution_strategy = insertion_params['conflict_resolution_strategy']
+
+    with io.BytesIO(content) as data:
+        if 'csv' in file.content_type:
+            df = pd.read_csv(data)
+        if file.content_type == 'text/tab-separated-values':
+            df = pd.read_csv(data, delimiter='\t')
 
     client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
     client.initialise_client()
-
-
+    df.to_sql(table_name, client.con, if_exists=conflict_resolution_strategy, index=False)
 
     return {"message": "Hello World"}
+
 
 @app.delete("/delete")
 def delete():
     return {"message": "deleted resource"}
+
 
 @app.post("/ingest_external")
 def ingest_external():
