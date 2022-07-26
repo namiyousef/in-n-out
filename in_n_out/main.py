@@ -18,7 +18,7 @@ class QueryParams(BaseModel):
 
 class IngestionParams(BaseModel):
     sql_query: str
-    query: QueryParams
+    query: QueryParams = None
     username: str
     password: str
     port: int
@@ -27,8 +27,6 @@ class IngestionParams(BaseModel):
 
 
 class InsertionParams(BaseModel):
-    sql_query: str
-    query: QueryParams
     username: str
     password: str
     port: int = 5432
@@ -52,7 +50,7 @@ def ingest(ingestion_params: IngestionParams, limit: int = -1, ):
     client.initialise_client()
     df = client.query(ingestion_params['sql_query'])
 
-    return df
+    return df.to_json()
 
 @app.post("/insert")
 async def insert(
