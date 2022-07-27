@@ -15,6 +15,8 @@ class PostgresClient:
         self.con = self.engine.connect()
 
     def query(self, query):
-        result = self.con.execute(query).fetchall()
-        df = pd.DataFrame(result)
+        query_result = self.con.execute(query)
+        data = query_result.fetchall()
+        columns = query_result.keys()
+        df = pd.DataFrame(data, columns=columns)
         return df
