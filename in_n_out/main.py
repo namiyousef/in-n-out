@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, Depends, Form, Query
+from fastapi import FastAPI, UploadFile, File, Depends, Form, Query, Response
 
 from pydantic import BaseModel, Json
 from typing import Union, List
@@ -37,7 +37,9 @@ class InsertionParams(BaseModel):
 
 
 @app.post("/ingest")
-def ingest(ingestion_params: IngestionParams, limit: int = -1, ):
+def ingest(
+        response: Response,
+        ingestion_params: IngestionParams, limit: int = -1, ):
     ingestion_params = ingestion_params.dict()
 
     DB_USER = ingestion_params['username']
@@ -45,9 +47,12 @@ def ingest(ingestion_params: IngestionParams, limit: int = -1, ):
     DB_HOST = ingestion_params['host']
     DB_PORT = ingestion_params['port']
     DB_NAME = ingestion_params['database_name']
-
     client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
-    client.initialise_client()
+    try:
+        client.initialise_client()
+    except db.exc.OperationalError as e:
+        response.status_code = 400 # todo need to get a different error tbh
+        return "The client does not seem to be fully operational"
     df = client.query(ingestion_params['sql_query'])
 
     return df.to_json()
