@@ -54,9 +54,14 @@ def ingest(
         response.status_code = 400 # todo need to get a different error tbh
         return "The client does not seem to be fully operational"
     df = client.query(ingestion_params['sql_query'])
-
     return df.to_json()
 
+# writing data features
+# - single file write operation
+# - multiple file, single write operation (simple transaction)
+# - nested transaction (if working with multiple data sources, transaction within a transaction!)
+# - complex transaction (write, then read and refresh data, then write again!)
+# - not sure if these complex operations can work /w simple app design. Need to think about this better!
 @app.post("/insert")
 async def insert(
         insertion_params: Json[InsertionParams],
