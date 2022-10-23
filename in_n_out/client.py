@@ -1,6 +1,13 @@
 import sqlalchemy as db
 import pandas as pd
 
+
+class GoogleDriveClient:
+    def __init__(self):
+        pass
+
+    def initialise_client(self):
+        print('testing')
 class PostgresClient:
     def __init__(self, username, password, host, port, name):
         self.db_user = username
@@ -20,3 +27,28 @@ class PostgresClient:
         columns = query_result.keys()
         df = pd.DataFrame(data, columns=columns)
         return df
+
+
+DATABASE_CLIENT_MAP = {
+    "pg": PostgresClient,
+    "gdrive": GoogleDriveClient
+}
+class UniversalClient(PostgresClient, GoogleDriveClient):
+
+    def __init__(self, database_type, ):
+        self.client = DATABASE_CLIENT_MAP[database_type]()
+
+    def initialise_client(self):
+        self.client.initialise_client()
+
+
+    def write_to_sink(self):
+        pass
+
+    def read_from_source(self):
+        pass
+
+
+if __name__ == '__main__':
+    client = UniversalClient('gdrive')
+    client.initialise_client()

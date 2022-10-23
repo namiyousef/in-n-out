@@ -15,6 +15,18 @@ def get_version(rel_path):
     else:
         raise RuntimeError("Unable to find version string.")
 
+test_packages = [
+    'pytest',
+    'coverage'
+]
+
+packages = [
+    'fastapi[all]',
+    'Flask-SQLAlchemy',
+    'psycopg2-binary',
+    'pandas',
+    'python-multipart'
+]
 
 setup(
     name='in_n_out',
@@ -23,12 +35,8 @@ setup(
     author='Yousef Nami',
     author_email='namiyousef@hotmail.com',
     url='https://github.com/namiyousef/in-n-out',
-    install_requires=[
-        'fastapi[all]',
-        'Flask-SQLAlchemy',
-        'psycopg2-binary',
-        'pandas'
-    ],
+    install_requires=packages,
+    test_require=test_packages,
     packages=find_packages(exclude=('tests*', 'experiments*')),
     #package_data={'': ['api/specs/api.yaml']},
     include_package_data=True,
