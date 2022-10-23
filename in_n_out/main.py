@@ -47,6 +47,7 @@ def ingest(
     DB_HOST = ingestion_params['host']
     DB_PORT = ingestion_params['port']
     DB_NAME = ingestion_params['database_name']
+
     client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
     try:
         client.initialise_client()
@@ -66,9 +67,8 @@ def ingest(
 async def insert(
         insertion_params: Json[InsertionParams],
                  file: UploadFile = File(...),
-                 limit: int = -1, ):
+                 limit: int = -1):
     insertion_params = insertion_params.dict()
-
     content = await file.read()
 
     DB_USER = insertion_params['username']
@@ -84,7 +84,8 @@ async def insert(
             df = pd.read_csv(data)
         if file.content_type == 'text/tab-separated-values':
             df = pd.read_csv(data, delimiter='\t')
-
+        if file.content_type == 'application/octet-stream': # TODO can you have other 'octet-stream'?
+            df = pd.read_parquet(data, engine='pyarrow')
     client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
     client.initialise_client()
     df.to_sql(table_name, client.con, if_exists=conflict_resolution_strategy, index=False)
