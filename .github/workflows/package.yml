@@ -75,7 +75,7 @@ jobs:
           uvicorn main:app &
       - name: Initialise Postgres Container
         run: |
-          docker run --name postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_USERNAME=postgres -p 5432:5432 postgres
+          docker run -d --rm --name postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_USERNAME=postgres -p 5432:5432 postgres
       - name: Test with pytest
         run: |
           coverage run -m pytest --verbose -rsfp tests/integration
