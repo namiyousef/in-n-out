@@ -35,6 +35,9 @@ class InsertionParams(BaseModel):
     table_name: str
     conflict_resolution_strategy: str = 'replace'
 
+@app.get("/health_check")
+def health_check():
+    return "API Healthy"
 
 @app.post("/ingest")
 def ingest(
