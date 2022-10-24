@@ -42,7 +42,8 @@ def health_check():
 @app.post("/ingest")
 def ingest(
         response: Response,
-        ingestion_params: IngestionParams, limit: int = -1, ):
+        ingestion_params: IngestionParams, limit: int = -1
+):
     ingestion_params = ingestion_params.dict()
 
     DB_USER = ingestion_params['username']
@@ -58,6 +59,8 @@ def ingest(
         response.status_code = 400 # todo need to get a different error tbh
         return "The client does not seem to be fully operational"
     df = client.query(ingestion_params['sql_query'])
+    # TODO on writing we want to correct to the timezone of the sink
+    # TODO on reading, we want to read as UTC
     return df.to_json()
 
 # writing data features
@@ -68,6 +71,7 @@ def ingest(
 # - not sure if these complex operations can work /w simple app design. Need to think about this better!
 @app.post("/insert")
 async def insert(
+        response: Response,
         insertion_params: Json[InsertionParams],
                  file: UploadFile = File(...),
                  limit: int = -1):
@@ -82,6 +86,9 @@ async def insert(
     table_name = insertion_params['table_name']
     conflict_resolution_strategy = insertion_params['conflict_resolution_strategy']
     dataset_name = insertion_params.get('dataset_name', None)
+    schema = insertion_params.get('schema', {}) # need to decide: will schema do a data transformation, or is it just for creating the asset?
+    # TODO need to onboard more usecases, e.g. bigquery, gcs, gdrive
+
     # TODO need to clean this up!
     with io.BytesIO(content) as data:
         if 'csv' in file.content_type:
@@ -91,12 +98,19 @@ async def insert(
         if file.content_type == 'application/octet-stream': # TODO can you have other 'octet-stream'?
             df = pd.read_parquet(data, engine='pyarrow')
     client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
-    client.initialise_client()
+
+    try:
+        client.initialise_client()
+    except db.exc.OperationalError as e:
+        response.status_code = 400  # todo need to get a different error tbh
+        return "The client does not seem to be fully operational"
+
+
     # TODO this is in the case of postgres!
     df.to_sql(table_name, client.con, schema=dataset_name, if_exists=conflict_resolution_strategy, index=False)
+    response.status_code = 201
 
-
-    return {"message": "Hello World"}
+    return "Created table"
 
 
 @app.delete("/delete")
