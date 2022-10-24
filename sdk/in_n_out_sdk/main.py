@@ -24,17 +24,18 @@ def health_check():
     return _is_status_code_valid(status_code)
 
 
-def write_data(limit,
-               database_type,
-               df,
-               content_type,
-               conflict_resolution_strategy,
-               username, # TODO think about how to change API specs to have authentication params instead? MOre generic?
-               password,
-               port,
-               host,
-               database_name,
-               table_name,
+def write_data(
+        database_name,
+        table_name,
+        limit=-1,
+        database_type='pg',
+        df=pd.DataFrame(),
+        content_type='csv',
+        conflict_resolution_strategy='fail',
+        username='postgres', # TODO think about how to change API specs to have authentication params instead? MOre generic?
+        password='postgres',
+        port=5432,
+        host='localhost',
    ):
 
     url = f'{IN_N_OUT_URL}/insert?limit={limit}'
