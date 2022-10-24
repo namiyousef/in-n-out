@@ -17,7 +17,8 @@ def get_version(rel_path):
 
 test_packages = [
     'pytest',
-    'coverage'
+    'coverage',
+    'pytest-dependency'
 ]
 
 packages = [
@@ -25,7 +26,8 @@ packages = [
     'Flask-SQLAlchemy',
     'psycopg2-binary',
     'pandas',
-    'python-multipart'
+    'python-multipart',
+    'PyDrive2'
 ]
 
 setup(
