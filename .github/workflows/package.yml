@@ -70,12 +70,12 @@ jobs:
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
       - name: Run App
         run: |
-          pwd
           python -m pip install .
           cd in_n_out
           uvicorn main:app &
-          pwd
+      - name: Initialise Postgres Container
+        run: |
+          docker run --name postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_USERNAME=postgres -p 5432:5432 postgres
       - name: Test with pytest
         run: |
-          pwd
           coverage run -m pytest --verbose -rsfp tests/integration
