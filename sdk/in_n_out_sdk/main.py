@@ -10,6 +10,20 @@ headers = {
         'Accept': 'text/plain'
     }
 
+def _is_status_code_valid(status_code):
+    if str(status_code).startswith('2'):
+        return True
+
+
+def health_check():
+    url = f'{IN_N_OUT_URL}/health_check'
+
+    resp = requests.get(url)
+    status_code = resp.status_code
+
+    return _is_status_code_valid(status_code)
+
+
 def write_data(limit,
                database_type,
                df,
