@@ -81,7 +81,8 @@ async def insert(
     DB_NAME = insertion_params['database_name']
     table_name = insertion_params['table_name']
     conflict_resolution_strategy = insertion_params['conflict_resolution_strategy']
-
+    dataset_name = insertion_params.get('dataset_name', None)
+    # TODO need to clean this up!
     with io.BytesIO(content) as data:
         if 'csv' in file.content_type:
             df = pd.read_csv(data)
@@ -91,7 +92,9 @@ async def insert(
             df = pd.read_parquet(data, engine='pyarrow')
     client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
     client.initialise_client()
-    df.to_sql(table_name, client.con, if_exists=conflict_resolution_strategy, index=False)
+    # TODO this is in the case of postgres!
+    df.to_sql(table_name, client.con, schema=dataset_name, if_exists=conflict_resolution_strategy, index=False)
+
 
     return {"message": "Hello World"}
 
