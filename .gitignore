@@ -131,3 +131,6 @@ dmypy.json
 
 # ide specific
 .idea/
+
+# venvs
+venv*/
