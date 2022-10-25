@@ -6,7 +6,7 @@
 # TODO need to revisit stragegy. As far as I understand, it is not possible to communicate between jobs. So this means that the
 # extra installation is redundant. need to think about the scope of tests to run here! If you have your service hosted somewhere then you'll
 # be able to call it directly
-name: Python package
+name: SDK Package
 
 on:
   push:
@@ -43,7 +43,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
-        coverage run -m pytest --verbose -rsfp tests/sdk/unit
+        coverage run -m pytest --verbose -rsfp sdk/tests/unit
 
   sdk-integration:
     runs-on: ubuntu-latest
@@ -81,4 +81,4 @@ jobs:
           docker run -d --rm --name postgres -e POSTGRES_PASSWORD=postgres -e POSTGRES_USERNAME=postgres -p 5432:5432 postgres
       - name: Test with pytest
         run: |
-          coverage run -m pytest --verbose -rsfp tests/sdk/integration
+          coverage run -m pytest --verbose -rsfp sdk/tests/integration
