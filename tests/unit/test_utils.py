@@ -1,7 +1,7 @@
 # TODO must move test if moving the functions to separate pandas sdk!
 import unittest
 
-from in_n_out.utils import _convert_timezone_columns_to_utc
+from in_n_out_sdk.utils import _convert_timezone_columns_to_utc
 
 from tests.assets.data import DF_INITIAL
 import pandas as pd

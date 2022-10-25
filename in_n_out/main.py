@@ -146,7 +146,7 @@ async def insert(
         return "The client does not seem to be fully operational"
 
     dtypes = _get_pg_datatypes(df)
-    print(dtypes)
+
     # TODO this is in the case of postgres!
     df.to_sql(table_name, client.con, schema=dataset_name, if_exists=conflict_resolution_strategy, index=False, method='multi',
               dtype=dtypes)

@@ -5,7 +5,7 @@ import io
 
 from in_n_out_sdk.config import IN_N_OUT_URL
 # TODO needs to be moved in a separate module entirely
-from in_n_out.utils import _convert_timezone_columns_to_utc
+from in_n_out_sdk.utils import _convert_timezone_columns_to_utc
 
 # TODO need to understand what content-type and accept do...
 # TODO need to run speed comparison for Streaming vs. nonStreaming response!
