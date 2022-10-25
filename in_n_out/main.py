@@ -1,5 +1,7 @@
 from fastapi import FastAPI, UploadFile, File, Depends, Form, Query, Response
-
+from fastapi.responses import PlainTextResponse, FileResponse, StreamingResponse
+from sqlalchemy import INTEGER, FLOAT, TIMESTAMP, VARCHAR, BOOLEAN
+from pandas.api.types import is_datetime64tz_dtype, is_datetime64_dtype
 from pydantic import BaseModel, Json
 from typing import Union, List
 import sqlalchemy as db
@@ -39,10 +41,12 @@ class InsertionParams(BaseModel):
 def health_check():
     return "API Healthy"
 
+# TODO at the moment we only ingest parquet. Need to compare with doing different types!
+# TODO we are using post because the contents don't get cahced in the server logs
 @app.post("/ingest")
 def ingest(
         response: Response,
-        ingestion_params: IngestionParams, limit: int = -1
+        ingestion_params: IngestionParams, limit: int = -1,
 ):
     ingestion_params = ingestion_params.dict()
 
@@ -53,6 +57,14 @@ def ingest(
     DB_NAME = ingestion_params['database_name']
 
     client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
+
+    # Logic should be: initialise client
+    # ingest data
+    # apply any processing to the data
+    # return the data
+
+    # questions to answer? Will you need to use this as a user, e.g. want to see the results in .json?
+    # response on read should always be 200
     try:
         client.initialise_client()
     except db.exc.OperationalError as e:
@@ -61,8 +73,19 @@ def ingest(
     df = client.query(ingestion_params['sql_query'])
     # TODO on writing we want to correct to the timezone of the sink
     # TODO on reading, we want to read as UTC
-    return df.to_json()
 
+    return Response(df.to_parquet(engine='pyarrow', index=False), media_type='application/octet-stream')
+
+    def iterfile(df):
+        mem = io.BytesIO()
+        df.to_parquet(
+            mem,
+            engine='pyarrow',
+            index=False
+        )
+        mem.seek(0)
+        yield from mem
+    return StreamingResponse(iterfile(df), media_type='application/octet-stream')
 # writing data features
 # - single file write operation
 # - multiple file, single write operation (simple transaction)
@@ -99,16 +122,35 @@ async def insert(
             df = pd.read_parquet(data, engine='pyarrow')
     client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
 
+    DTYPE_MAP = {
+        'int64': INTEGER,
+        'float64': FLOAT,
+        'datetime64[ns]': TIMESTAMP,
+        'datetime64[ns, UTC]': TIMESTAMP(timezone=True),
+        'bool': BOOLEAN,
+        'object': VARCHAR
+    }
+    def _get_pg_datatypes(df):
+        dtypes = {}
+        for col, dtype in df.dtypes.items():
+            if is_datetime64tz_dtype(dtype):
+                dtypes[col] = DTYPE_MAP['datetime64[ns, UTC]']
+            else:
+                dtypes[col] = DTYPE_MAP[str(dtype)]
+        return dtypes
+
     try:
         client.initialise_client()
     except db.exc.OperationalError as e:
         response.status_code = 400  # todo need to get a different error tbh
         return "The client does not seem to be fully operational"
 
-
+    dtypes = _get_pg_datatypes(df)
+    print(dtypes)
     # TODO this is in the case of postgres!
-    df.to_sql(table_name, client.con, schema=dataset_name, if_exists=conflict_resolution_strategy, index=False)
-    response.status_code = 201
+    df.to_sql(table_name, client.con, schema=dataset_name, if_exists=conflict_resolution_strategy, index=False, method='multi',
+              dtype=dtypes)
+    response.status_code = 201 # TODO technically not correct because we don't always created the asset, sometimes it is simply a 200 response!
 
     return "Created table"
 

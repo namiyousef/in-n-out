@@ -4,10 +4,18 @@ import pandas as pd
 import io
 
 from in_n_out_sdk.config import IN_N_OUT_URL
+# TODO needs to be moved in a separate module entirely
+from in_n_out.utils import _convert_timezone_columns_to_utc
+
+# TODO need to understand what content-type and accept do...
+# TODO need to run speed comparison for Streaming vs. nonStreaming response!
+
+# TODO need to see what file response does!
+# TODO need to see if what we've done now applies for get/put and post request!
 
 headers = {
         'Content-Type': 'application/json',
-        'Accept': 'text/plain'
+        'Accept': 'application/octet-stream'
     }
 
 def _is_status_code_valid(status_code):
@@ -40,6 +48,8 @@ def write_data(
 
     url = f'{IN_N_OUT_URL}/insert?limit={limit}'
 
+    #df = _convert_timezone_columns_to_utc(df)
+
     if content_type == 'parquet':
         memory_buffer = io.BytesIO()
         df.to_parquet(
@@ -59,6 +69,7 @@ def write_data(
         host=host
     ))
     }
+    # TODO need to update this for diff content types
     files = {
         'file': ('Test', memory_buffer, 'application/octet-stream')
     }
@@ -67,8 +78,36 @@ def write_data(
     return resp.text, resp.status_code
 
 
-def read_data():
-    pass
+def read_data(
+        ingestion_param,
+        limit=-1,
+        stream_data=False,
+):
+    url = f'{IN_N_OUT_URL}/ingest?limit={limit}'
+
+    if not stream_data:
+        resp = requests.post(url, json=ingestion_param, headers=headers)
+        status_code = resp.status_code
+        if _is_status_code_valid(status_code):
+            df = pd.read_parquet(io.BytesIO(resp.content), engine='pyarrow')
+            return df, status_code
+    else:
+        with requests.post(url, json=ingestion_param, headers=headers, stream=True) as resp:
+            data = b''
+            for line in resp.iter_content(1048):
+                data += line
+            memory_buffer = io.BytesIO(data)
+            print(len(data))
+            print(pd.read_parquet(memory_buffer, engine='pyarrow'))
+        return None, None
+    status_code = resp.status_code
+
+    if _is_status_code_valid(status_code):
+
+        df = pd.read_parquet(resp.text, engine='pyarrow')
+        #df = resp.json()
+        return df, status_code
+    return resp.text, resp.status_code
 
 if __name__ == '__main__':
 
