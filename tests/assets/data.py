@@ -25,7 +25,7 @@ DF_INITIAL = pd.DataFrame({
 DF_MIXED = pd.DataFrame({
     'datetime': [MILLENNIUM_END_OFFSET, None],
     'datetime_utc': [MILLENNIUM_END, np.datetime64('NaT')],
-    'datetime_pacific': [MILLENNIUM_END_PACIFIC, np.nan],
+    'datetime_pacific': [MILLENNIUM_END_UTC, np.nan],
     # missing final datetime (offset)
     'float': [np.nan, None],
     'string': ['', None],
