@@ -17,7 +17,7 @@ def get_version(rel_path):
 
 
 setup(
-    name='in_n_out_sdk',
+    name='in-n-out-sdk',
     version=get_version("in_n_out_sdk/__init__.py"),
     description='sdk for in_n_out',
     author='Yousef Nami',
