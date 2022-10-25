@@ -3,7 +3,7 @@ import numpy as np
 import datetime as dt
 import pytz
 # TODO this import needs to come from somewhere else
-from in_n_out.utils import _convert_timezone_columns_to_utc
+from in_n_out_sdk.utils import _convert_timezone_columns_to_utc
 from functools import partial
 
 _gen_date = partial(dt.datetime, 1999, 12, 31)
