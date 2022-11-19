@@ -5,5 +5,3 @@ general purpose data ingestion app
 ```bash
 uvicorn main:app --reload
 ```
-
-adds commit testing
