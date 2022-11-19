@@ -1,13 +1,24 @@
 import sqlalchemy as db
 import pandas as pd
-
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
 
 class GoogleDriveClient:
     def __init__(self):
         pass
 
     def initialise_client(self):
-        print('testing')
+        gauth = GoogleAuth()
+        gauth.LocalWebserverAuth()
+        self.drive = GoogleDrive(gauth)
+
+    def query(self):
+        pass
+
+class BigQueryClient:
+    def __init__(self):
+        pass
+
 class PostgresClient:
     def __init__(self, username, password, host, port, name):
         self.db_user = username
@@ -33,6 +44,7 @@ DATABASE_CLIENT_MAP = {
     "pg": PostgresClient,
     "gdrive": GoogleDriveClient
 }
+
 class UniversalClient(PostgresClient, GoogleDriveClient):
 
     def __init__(self, database_type, ):
@@ -47,7 +59,6 @@ class UniversalClient(PostgresClient, GoogleDriveClient):
 
     def read_from_source(self):
         pass
-
 
 if __name__ == '__main__':
     client = UniversalClient('gdrive')
