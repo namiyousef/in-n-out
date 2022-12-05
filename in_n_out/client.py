@@ -2,6 +2,11 @@ import sqlalchemy as db
 import pandas as pd
 from pydrive2.auth import GoogleAuth
 from pydrive2.drive import GoogleDrive
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import make_msgid
+
 
 class GoogleDriveClient:
     def __init__(self):
@@ -39,6 +44,39 @@ class PostgresClient:
         df = pd.DataFrame(data, columns=columns)
         return df
 
+class GoogleMailClient:
+    def __init__(self, email_params, files):
+
+        self.sender_email = email_params['sender_email']
+        self.recipient_email = email_params['recipient_email']
+        self.password = email_params['password']
+        self.in_reply_to = email_params.get('message_id')
+        self.subject = email_params.get('subject')
+        self.content = email_params.get('content')
+
+        self.message_id = make_msgid()
+
+        self.build_message
+
+
+    @property
+    def build_message(self):
+        message = MIMEMultipart()
+        message['From'] = self.sender_email
+        message['To'] = ' '.join(self.recipient_email)
+        message['Subject'] = self.subject
+        message["Message-ID"] = self.message_id
+        message["In-Reply-To"] = self.in_reply_to
+        message["References"] = self.in_reply_to
+        self.message = message
+
+    def send_email(self):
+        session = smtplib.SMTP('smtp.gmail.com', 587)  # use gmail with port
+        session.starttls()  # enable security
+        session.login(self.sender_email, self.password)  # login with mail_id and password
+        text = self.message.as_string()
+        session.sendmail(self.sender_email, self.recipient_email, text)
+        session.quit()
 
 DATABASE_CLIENT_MAP = {
     "pg": PostgresClient,
