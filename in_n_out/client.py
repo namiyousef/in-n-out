@@ -5,6 +5,9 @@ from pydrive2.drive import GoogleDrive
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
+
 from email.utils import make_msgid
 
 
@@ -45,7 +48,7 @@ class PostgresClient:
         return df
 
 class GoogleMailClient:
-    def __init__(self, email_params, files):
+    def __init__(self, email_params):
 
         self.sender_email = email_params['sender_email']
         self.recipient_email = email_params['recipient_email']
@@ -70,6 +73,24 @@ class GoogleMailClient:
         message["References"] = self.in_reply_to
         self.message = message
 
+    def add_attachment(self, content, filename):
+        # Open PDF file in binary mode
+        # Add file as application/octet-stream
+        # Email client can usually download this automatically as attachment
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(content)
+
+        # Encode file in ASCII characters to send by email
+        encoders.encode_base64(part)
+
+        # Add header as key/value pair to attachment part
+        part.add_header(
+            "Content-Disposition",
+            f"attachment; filename= {filename}",
+        )
+
+        # Add attachment to message and convert message to string
+        self.message.attach(part)
     def send_email(self):
         session = smtplib.SMTP('smtp.gmail.com', 587)  # use gmail with port
         session.starttls()  # enable security

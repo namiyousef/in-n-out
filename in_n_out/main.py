@@ -179,7 +179,12 @@ async def send_gmail(
         files: List[UploadFile]
 ):
     email_params = email_params.dict()
-    client = GoogleMailClient(email_params, files)
+    client = GoogleMailClient(email_params)
+
+    for file in files:
+        content = await file.read()
+        filename = file.filename
+        client.add_attachment(content, filename)
     client.send_email()
 
     return client.message_id
