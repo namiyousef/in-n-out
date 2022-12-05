@@ -7,9 +7,8 @@ from typing import Union, List, Optional
 import sqlalchemy as db
 import pandas as pd
 from in_n_out.manager import Manager
-from in_n_out.client import PostgresClient
+from in_n_out.client import PostgresClient, GoogleMailClient
 import io
-from email.utils import make_msgid
 
 from starlette.background import BackgroundTask
 app = FastAPI()
@@ -25,6 +24,7 @@ class EmailParams(BaseModel):
     password: str
     subject: str = None
     message_id: str = None
+    content: str = None
 
 class IngestionParams(BaseModel):
     sql_query: str
@@ -179,43 +179,10 @@ async def send_gmail(
         files: List[UploadFile]
 ):
     email_params = email_params.dict()
-    sender_email = email_params['sender_email']
-    recipient_email = email_params['recipient_email']
-    password = email_params['password']
-    in_reply_to = email_params.get('message_id')
-    subject = email_params.get('subject')
+    client = GoogleMailClient(email_params, files)
+    client.send_email()
 
-    message_id = make_msgid()
-
-    import smtplib
-    from email.mime.multipart import MIMEMultipart
-    from email.mime.text import MIMEText
-    mail_content = '''Hello,
-    This is a simple mail. There is only text, no attachments are there The mail is sent using Python SMTP library.
-    Thank You
-    '''
-
-    #The mail addresses and password
-
-    #Setup the MIME
-    message = MIMEMultipart()
-    message['From'] = sender_email
-    message['To'] = ' '.join(recipient_email)
-    message['Subject'] = subject
-    message["Message-ID"] = message_id
-    message["In-Reply-To"] = in_reply_to
-    message["References"] = in_reply_to
-
-    #The body and the attachments for the mail
-    message.attach(MIMEText(mail_content, 'plain'))
-    #Create SMTP session for sending the mail
-    session = smtplib.SMTP('smtp.gmail.com', 587) #use gmail with port
-    session.starttls() #enable security
-    session.login(sender_email, password) #login with mail_id and password
-    text = message.as_string()
-    session.sendmail(sender_email, recipient_email, text)
-    session.quit()
-    return message_id
+    return client.message_id
 
 
 if __name__ == '__main__':
