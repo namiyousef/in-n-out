@@ -137,3 +137,6 @@ venv*/
 
 # secrets
 secrets
+
+# mac
+.DS_Store
