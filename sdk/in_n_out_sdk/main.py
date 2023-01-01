@@ -24,6 +24,11 @@ def _is_status_code_valid(status_code):
 
 
 def health_check():
+    """Checks if API healthy
+
+    :return: `True` if API healthy, else `False`
+    :rtype: bool
+    """
     url = f'{IN_N_OUT_URL}/health_check'
 
     resp = requests.get(url)
