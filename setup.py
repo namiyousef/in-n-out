@@ -15,20 +15,19 @@ def get_version(rel_path):
     else:
         raise RuntimeError("Unable to find version string.")
 
+def parse_requirements(path_to_file):
+    with open(path_to_file) as f:
+        requirements = f.readlines()
+    
+    return requirements
+    
 test_packages = [
     'pytest',
     'coverage',
     'pytest-dependency'
 ]
 
-packages = [
-    'fastapi[all]',
-    'Flask-SQLAlchemy',
-    'psycopg2-binary',
-    'pandas',
-    'python-multipart',
-    'PyDrive2'
-]
+core_packages = parse_requirements('requirements/core.txt')
 
 setup(
     name='in_n_out',
@@ -37,7 +36,7 @@ setup(
     author='Yousef Nami',
     author_email='namiyousef@hotmail.com',
     url='https://github.com/namiyousef/in-n-out',
-    install_requires=packages,
+    install_requires=core_packages,
     test_require=test_packages,
     packages=find_packages(exclude=('tests*', 'experiments*')),
     #package_data={'': ['api/specs/api.yaml']},
