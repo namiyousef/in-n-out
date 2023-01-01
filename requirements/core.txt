@@ -1,0 +1,6 @@
+fastapi[all]
+Flask-SQLAlchemy
+psycopg2-binary
+pandas
+python-multipart
+PyDrive2
