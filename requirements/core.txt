@@ -4,3 +4,4 @@ psycopg2-binary
 pandas
 python-multipart
 PyDrive2
+numpy
