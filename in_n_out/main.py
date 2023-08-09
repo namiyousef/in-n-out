@@ -46,6 +46,7 @@ class InsertionParams(BaseModel):
     database_name: str
     table_name: str
     conflict_resolution_strategy: str = "replace"
+    # database_type: str
 
 
 @app.get("/health_check")
@@ -117,7 +118,7 @@ def ingest(
 @app.post("/insert")
 async def insert(
     response: Response,
-    insertion_params: Json[InsertionParams],
+    insertion_params: InsertionParams,
     file: UploadFile = File(...),
     limit: int = -1,
 ):
@@ -129,6 +130,7 @@ async def insert(
     DB_HOST = insertion_params["host"]
     DB_PORT = insertion_params["port"]
     DB_NAME = insertion_params["database_name"]
+    DB_TYPE = insertion_params["database_type"]
     table_name = insertion_params["table_name"]
     conflict_resolution_strategy = insertion_params[
         "conflict_resolution_strategy"
@@ -143,6 +145,8 @@ async def insert(
 
     # TODO need to clean this up!
     with io.BytesIO(content) as data:
+        if "json" in file.content_type:
+            df = pd.read_json(data)
         if "csv" in file.content_type:
             df = pd.read_csv(data)
         if file.content_type == "text/tab-separated-values":
@@ -151,44 +155,56 @@ async def insert(
             file.content_type == "application/octet-stream"
         ):  # TODO can you have other 'octet-stream'?
             df = pd.read_parquet(data, engine="pyarrow")
-    client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
+    if DB_TYPE == "gmail":
+        pass
+    elif DB_TYPE == "pg":
+        client = PostgresClient(
+            DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
+        )
 
-    DTYPE_MAP = {
-        "int64": INTEGER,
-        "float64": FLOAT,
-        "datetime64[ns]": TIMESTAMP,
-        "datetime64[ns, UTC]": TIMESTAMP(timezone=True),
-        "bool": BOOLEAN,
-        "object": VARCHAR,
-    }
+        DTYPE_MAP = {
+            "int64": INTEGER,
+            "float64": FLOAT,
+            "datetime64[ns]": TIMESTAMP,
+            "datetime64[ns, UTC]": TIMESTAMP(timezone=True),
+            "bool": BOOLEAN,
+            "object": VARCHAR,
+        }
 
-    def _get_pg_datatypes(df):
-        dtypes = {}
-        for col, dtype in df.dtypes.items():
-            if is_datetime64tz_dtype(dtype):
-                dtypes[col] = DTYPE_MAP["datetime64[ns, UTC]"]
-            else:
-                dtypes[col] = DTYPE_MAP[str(dtype)]
-        return dtypes
+        def _get_pg_datatypes(df):
+            dtypes = {}
+            for col, dtype in df.dtypes.items():
+                if is_datetime64tz_dtype(dtype):
+                    dtypes[col] = DTYPE_MAP["datetime64[ns, UTC]"]
+                else:
+                    dtypes[col] = DTYPE_MAP[str(dtype)]
+            return dtypes
 
-    try:
-        client.initialise_client()
-    except db.exc.OperationalError as e:
-        response.status_code = 400  # todo need to get a different error tbh
-        return f"The client does not seem to be fully operational. Error: {e}"
+        try:
+            client.initialise_client()
+        except db.exc.OperationalError as e:
+            response.status_code = (
+                400  # todo need to get a different error tbh
+            )
+            return (
+                f"The client does not seem to be fully operational. Error: {e}"
+            )
 
-    dtypes = _get_pg_datatypes(df)
+        dtypes = _get_pg_datatypes(df)
 
-    # TODO this is in the case of postgres!
-    df.to_sql(
-        table_name,
-        client.con,
-        schema=dataset_name,
-        if_exists=conflict_resolution_strategy,
-        index=False,
-        method="multi",
-        dtype=dtypes,
-    )
+        # TODO this is in the case of postgres!
+        df.to_sql(
+            table_name,
+            client.con,
+            schema=dataset_name,
+            if_exists=conflict_resolution_strategy,
+            index=False,
+            method="multi",
+            dtype=dtypes,
+        )
+    else:
+        response.status_code = 400
+        return "Invalid database type"
     response.status_code = 201  # TODO technically not correct because we don't
     # always created the asset, sometimes it is simply a 200 response!
 

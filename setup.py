@@ -29,6 +29,7 @@ def parse_requirements(path_to_file):
 test_packages = ["pytest", "coverage", "pytest-dependency"]
 
 core_packages = parse_requirements("requirements/core.txt")
+private_packages = parse_requirements("requirements/private.txt")
 
 setup(
     name="in_n_out",
@@ -39,7 +40,7 @@ setup(
     author="Yousef Nami",
     author_email="namiyousef@hotmail.com",
     url="https://github.com/namiyousef/in-n-out",
-    install_requires=core_packages,
+    install_requires=core_packages + private_packages,
     test_require=test_packages,
     packages=find_packages(exclude=("tests*", "experiments*")),
     # package_data={'': ['api/specs/api.yaml']},

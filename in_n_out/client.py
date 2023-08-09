@@ -2,7 +2,8 @@ import smtplib
 from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+
+# from email.mime.text import MIMEText
 from email.utils import make_msgid
 
 import pandas as pd
@@ -36,7 +37,11 @@ class PostgresClient:
         self.db_host = host
         self.db_port = port
         self.db_name = name
-        self.db_uri = f"postgresql+psycopg2://{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        self.db_uri = (
+            f"postgresql+psycopg2://{self.db_user}"
+            f":{self.db_password}@{self.db_host}"
+            f":{self.db_port}/{self.db_name}"
+        )
 
     def initialise_client(self):
         self.engine = db.create_engine(self.db_uri)
