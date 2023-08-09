@@ -1,4 +1,5 @@
 import io
+import logging
 from typing import List
 
 import pandas as pd
@@ -12,6 +13,18 @@ from sqlalchemy import BOOLEAN, FLOAT, INTEGER, TIMESTAMP, VARCHAR
 from in_n_out.client import GoogleMailClient, PostgresClient
 
 app = FastAPI()
+
+
+"""with open('../logging_config.yaml') as f:
+    logging_config = yaml.safe_load(f.read())
+
+print(logging_config)
+
+logging.config.dictConfig(logging_config)
+logger = logging.getLogger('simpleExample')
+
+
+logger.info('logging please?')"""
 
 
 class QueryParams(BaseModel):
@@ -46,11 +59,30 @@ class InsertionParams(BaseModel):
     database_name: str
     table_name: str
     conflict_resolution_strategy: str = "replace"
-    # database_type: str
+
+
+logger = logging.getLogger("simple_example")
+logger.setLevel(logging.DEBUG)
+
+# create console handler and set level to debug
+ch = logging.StreamHandler()
+ch.setLevel(logging.DEBUG)
+
+# create formatter
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+# add formatter to ch
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
 
 
 @app.get("/health_check")
 def health_check():
+    logger.info("Checking api health")
     return "API Healthy"
 
 
@@ -79,8 +111,8 @@ def ingest(
     # apply any processing to the data
     # return the data
 
-    # questions to answer? Will you need to use this as a user, e.g.
-    # want to see the results in .json?
+    # questions to answer? Will you need to use this as a user, e.g. want to
+    # see the results in .json?
     # response on read should always be 200
     try:
         client.initialise_client()
@@ -110,15 +142,15 @@ def ingest(
 # writing data features
 # - single file write operation
 # - multiple file, single write operation (simple transaction)
-# - nested transaction (if working with multiple data sources,
-# transaction within a transaction!)
+# - nested transaction (if working with multiple data sources, transaction
+# #within a transaction!)
 # - complex transaction (write, then read and refresh data, then write again!)
 # - not sure if these complex operations can work /w simple app design.
-# Need to think about this better!
+# #Need to think about this better!
 @app.post("/insert")
 async def insert(
     response: Response,
-    insertion_params: InsertionParams,
+    insertion_params: Json[InsertionParams],
     file: UploadFile = File(...),
     limit: int = -1,
 ):
@@ -130,7 +162,6 @@ async def insert(
     DB_HOST = insertion_params["host"]
     DB_PORT = insertion_params["port"]
     DB_NAME = insertion_params["database_name"]
-    DB_TYPE = insertion_params["database_type"]
     table_name = insertion_params["table_name"]
     conflict_resolution_strategy = insertion_params[
         "conflict_resolution_strategy"
@@ -145,8 +176,6 @@ async def insert(
 
     # TODO need to clean this up!
     with io.BytesIO(content) as data:
-        if "json" in file.content_type:
-            df = pd.read_json(data)
         if "csv" in file.content_type:
             df = pd.read_csv(data)
         if file.content_type == "text/tab-separated-values":
@@ -155,56 +184,44 @@ async def insert(
             file.content_type == "application/octet-stream"
         ):  # TODO can you have other 'octet-stream'?
             df = pd.read_parquet(data, engine="pyarrow")
-    if DB_TYPE == "gmail":
-        pass
-    elif DB_TYPE == "pg":
-        client = PostgresClient(
-            DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
-        )
+    client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
 
-        DTYPE_MAP = {
-            "int64": INTEGER,
-            "float64": FLOAT,
-            "datetime64[ns]": TIMESTAMP,
-            "datetime64[ns, UTC]": TIMESTAMP(timezone=True),
-            "bool": BOOLEAN,
-            "object": VARCHAR,
-        }
+    DTYPE_MAP = {
+        "int64": INTEGER,
+        "float64": FLOAT,
+        "datetime64[ns]": TIMESTAMP,
+        "datetime64[ns, UTC]": TIMESTAMP(timezone=True),
+        "bool": BOOLEAN,
+        "object": VARCHAR,
+    }
 
-        def _get_pg_datatypes(df):
-            dtypes = {}
-            for col, dtype in df.dtypes.items():
-                if is_datetime64tz_dtype(dtype):
-                    dtypes[col] = DTYPE_MAP["datetime64[ns, UTC]"]
-                else:
-                    dtypes[col] = DTYPE_MAP[str(dtype)]
-            return dtypes
+    def _get_pg_datatypes(df):
+        dtypes = {}
+        for col, dtype in df.dtypes.items():
+            if is_datetime64tz_dtype(dtype):
+                dtypes[col] = DTYPE_MAP["datetime64[ns, UTC]"]
+            else:
+                dtypes[col] = DTYPE_MAP[str(dtype)]
+        return dtypes
 
-        try:
-            client.initialise_client()
-        except db.exc.OperationalError as e:
-            response.status_code = (
-                400  # todo need to get a different error tbh
-            )
-            return (
-                f"The client does not seem to be fully operational. Error: {e}"
-            )
+    try:
+        client.initialise_client()
+    except db.exc.OperationalError as e:
+        response.status_code = 400  # todo need to get a different error tbh
+        return f"The client does not seem to be fully operational. Error: {e}"
 
-        dtypes = _get_pg_datatypes(df)
+    dtypes = _get_pg_datatypes(df)
 
-        # TODO this is in the case of postgres!
-        df.to_sql(
-            table_name,
-            client.con,
-            schema=dataset_name,
-            if_exists=conflict_resolution_strategy,
-            index=False,
-            method="multi",
-            dtype=dtypes,
-        )
-    else:
-        response.status_code = 400
-        return "Invalid database type"
+    # TODO this is in the case of postgres!
+    df.to_sql(
+        table_name,
+        client.con,
+        schema=dataset_name,
+        if_exists=conflict_resolution_strategy,
+        index=False,
+        method="multi",
+        dtype=dtypes,
+    )
     response.status_code = 201  # TODO technically not correct because we don't
     # always created the asset, sometimes it is simply a 200 response!
 
@@ -241,17 +258,14 @@ async def send_gmail(
 
 if __name__ == "__main__":
     # TODO need to learn how to add custom logging to this, and also how to
-    # enable reload
-    import uvicorn
-
+    # nable reload
+    """import uvicorn
     log_config = uvicorn.config.LOGGING_CONFIG
-    log_config["formatters"]["access"][
-        "fmt"
-    ] = "%(asctime)s - %(levelname)s - %(message)s"
-    log_config["formatters"]["default"][
-        "fmt"
-    ] = "%(asctime)s - %(levelname)s - %(message)s"
-    uvicorn.run(app, log_config=log_config)
+    log_config["formatters"]["access"]["fmt"] = "%(asctime)s - %(levelname)s
+    - %(message)s"
+    log_config["formatters"]["default"]["fmt"] = "%(asctime)s - %(levelname)s
+    - %(message)s"
+    uvicorn.run(app, log_config=log_config)"""
 
     """def write_log_data(request, response):
         print('just testing')
