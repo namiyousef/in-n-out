@@ -1,30 +1,15 @@
 import io
-from typing import List, Optional, Union
+from typing import List
 
 import pandas as pd
 import sqlalchemy as db
-from fastapi import (
-    Depends,
-    FastAPI,
-    File,
-    Form,
-    Query,
-    Request,
-    Response,
-    UploadFile,
-)
-from fastapi.responses import (
-    FileResponse,
-    PlainTextResponse,
-    StreamingResponse,
-)
-from pandas.api.types import is_datetime64_dtype, is_datetime64tz_dtype
+from fastapi import FastAPI, File, Response, UploadFile
+from fastapi.responses import StreamingResponse
+from pandas.api.types import is_datetime64tz_dtype
 from pydantic import BaseModel, Json
 from sqlalchemy import BOOLEAN, FLOAT, INTEGER, TIMESTAMP, VARCHAR
-from starlette.background import BackgroundTask
 
 from in_n_out.client import GoogleMailClient, PostgresClient
-from in_n_out.manager import Manager
 
 app = FastAPI()
 
@@ -68,8 +53,10 @@ def health_check():
     return "API Healthy"
 
 
-# TODO at the moment we only ingest parquet. Need to compare with doing different types!
-# TODO we are using post because the contents don't get cahced in the server logs
+# TODO at the moment we only ingest parquet. Need to compare with doing
+# different types!
+# TODO we are using post because the contents don't get cahced in the server
+# logs
 @app.post("/ingest")
 def ingest(
     response: Response,
@@ -91,13 +78,14 @@ def ingest(
     # apply any processing to the data
     # return the data
 
-    # questions to answer? Will you need to use this as a user, e.g. want to see the results in .json?
+    # questions to answer? Will you need to use this as a user, e.g.
+    # want to see the results in .json?
     # response on read should always be 200
     try:
         client.initialise_client()
     except db.exc.OperationalError as e:
         response.status_code = 400  # todo need to get a different error tbh
-        return "The client does not seem to be fully operational"
+        return f"The client does not seem to be fully operational. Error: {e}"
     df = client.query(ingestion_params["sql_query"])
     # TODO on writing we want to correct to the timezone of the sink
     # TODO on reading, we want to read as UTC
@@ -121,9 +109,11 @@ def ingest(
 # writing data features
 # - single file write operation
 # - multiple file, single write operation (simple transaction)
-# - nested transaction (if working with multiple data sources, transaction within a transaction!)
+# - nested transaction (if working with multiple data sources,
+# transaction within a transaction!)
 # - complex transaction (write, then read and refresh data, then write again!)
-# - not sure if these complex operations can work /w simple app design. Need to think about this better!
+# - not sure if these complex operations can work /w simple app design.
+# Need to think about this better!
 @app.post("/insert")
 async def insert(
     response: Response,
@@ -146,8 +136,10 @@ async def insert(
     dataset_name = insertion_params.get("dataset_name", None)
     schema = insertion_params.get(
         "schema", {}
-    )  # need to decide: will schema do a data transformation, or is it just for creating the asset?
+    )  # need to decide: will schema do a data transformation, or is it just
+    # for creating the asset?
     # TODO need to onboard more usecases, e.g. bigquery, gcs, gdrive
+    print(schema)
 
     # TODO need to clean this up!
     with io.BytesIO(content) as data:
@@ -183,7 +175,7 @@ async def insert(
         client.initialise_client()
     except db.exc.OperationalError as e:
         response.status_code = 400  # todo need to get a different error tbh
-        return "The client does not seem to be fully operational"
+        return f"The client does not seem to be fully operational. Error: {e}"
 
     dtypes = _get_pg_datatypes(df)
 
