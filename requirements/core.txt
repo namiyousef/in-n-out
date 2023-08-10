@@ -1,4 +1,4 @@
-fastapi[all]
+fastapi[all]==0.99.1
 Flask-SQLAlchemy
 psycopg2-binary
 pandas
