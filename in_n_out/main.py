@@ -6,7 +6,7 @@ import pandas as pd
 import sqlalchemy as db
 from fastapi import FastAPI, File, Response, UploadFile
 from fastapi.responses import StreamingResponse
-from in_n_out_clients.email_client import GoogleMailClient
+from in_n_out_clients.email_client import EmailClient
 from in_n_out_clients.google_calendar_client import GoogleCalendarClient
 from in_n_out_clients.postgres_client import PostgresClient
 from pandas.api.types import is_datetime64tz_dtype
@@ -279,7 +279,7 @@ async def send_gmail(
     files: List[UploadFile],
 ):
     email_params = email_params.dict()
-    client = GoogleMailClient(email_params)
+    client = EmailClient("gmail", email_params)
 
     for file in files:
         content = await file.read()
