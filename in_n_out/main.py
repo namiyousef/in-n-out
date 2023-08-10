@@ -9,9 +9,7 @@ from fastapi.responses import StreamingResponse
 from in_n_out_clients.email_client import EmailClient
 from in_n_out_clients.google_calendar_client import GoogleCalendarClient
 from in_n_out_clients.postgres_client import PostgresClient
-from pandas.api.types import is_datetime64tz_dtype
 from pydantic import BaseModel, Json
-from sqlalchemy import BOOLEAN, FLOAT, INTEGER, TIMESTAMP, VARCHAR
 
 app = FastAPI()
 
@@ -185,7 +183,7 @@ async def insert(
     )  # need to decide: will schema do a data transformation, or is it just
     # for creating the asset?
     # TODO need to onboard more usecases, e.g. bigquery, gcs, gdrive
-    print(schema)
+    print(schema, dataset_name)
 
     # TODO need to clean this up!
     with io.BytesIO(content) as data:
@@ -213,45 +211,9 @@ async def insert(
             DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
         )
 
-        DTYPE_MAP = {
-            "int64": INTEGER,
-            "float64": FLOAT,
-            "datetime64[ns]": TIMESTAMP,
-            "datetime64[ns, UTC]": TIMESTAMP(timezone=True),
-            "bool": BOOLEAN,
-            "object": VARCHAR,
-        }
-
-        def _get_pg_datatypes(df):
-            dtypes = {}
-            for col, dtype in df.dtypes.items():
-                if is_datetime64tz_dtype(dtype):
-                    dtypes[col] = DTYPE_MAP["datetime64[ns, UTC]"]
-                else:
-                    dtypes[col] = DTYPE_MAP[str(dtype)]
-            return dtypes
-
-        try:
-            client.initialise_client()
-        except db.exc.OperationalError as e:
-            response.status_code = (
-                400  # todo need to get a different error tbh
-            )
-            return (
-                f"The client does not seem to be fully operational. Error: {e}"
-            )
-
-        dtypes = _get_pg_datatypes(df)
-
-        # TODO this is in the case of postgres!
-        df.to_sql(
+        client.write(
+            df,
             table_name,
-            client.con,
-            schema=dataset_name,
-            if_exists=conflict_resolution_strategy,
-            index=False,
-            method="multi",
-            dtype=dtypes,
         )
     else:
         response.status_code = 400
