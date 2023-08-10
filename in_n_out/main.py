@@ -6,13 +6,12 @@ import pandas as pd
 import sqlalchemy as db
 from fastapi import FastAPI, File, Response, UploadFile
 from fastapi.responses import StreamingResponse
+from in_n_out_clients.email_client import GoogleMailClient
 from in_n_out_clients.google_calendar_client import GoogleCalendarClient
 from in_n_out_clients.postgres_client import PostgresClient
 from pandas.api.types import is_datetime64tz_dtype
 from pydantic import BaseModel, Json
 from sqlalchemy import BOOLEAN, FLOAT, INTEGER, TIMESTAMP, VARCHAR
-
-from in_n_out.client import GoogleMailClient
 
 app = FastAPI()
 
