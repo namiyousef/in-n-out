@@ -6,6 +6,7 @@ import pandas as pd
 import sqlalchemy as db
 from fastapi import FastAPI, File, Response, UploadFile
 from fastapi.responses import StreamingResponse
+from in_n_out_clients.google_calendar_client import GoogleCalendarClient
 from pandas.api.types import is_datetime64tz_dtype
 from pydantic import BaseModel, Json
 from sqlalchemy import BOOLEAN, FLOAT, INTEGER, TIMESTAMP, VARCHAR
@@ -52,14 +53,23 @@ class IngestionParams(BaseModel):
 
 
 class InsertionParams(BaseModel):
-    username: str
-    password: str
-    port: int = 5432
-    host: str
     database_name: str
     table_name: str
-    conflict_resolution_strategy: str = "replace"
+    database_type: str
 
+    conflict_resolution_strategy: str = "replace"  # make this an enum!
+    username: str | None = "username"
+    password: str | None = "password"
+    port: int | None = 5432
+    host: str | None = "localhost"
+    dataset_name: str | None = "dataset"
+
+
+# for calendar, database_type is to indicate which calendar resource, e.g.
+# gmail, outlook...
+# the database_name should indicate the specific calendar to write to
+# dataset is not used
+# table_name: this is the individual calendar to use
 
 logger = logging.getLogger("simple_example")
 logger.setLevel(logging.DEBUG)
@@ -147,6 +157,8 @@ def ingest(
 # - complex transaction (write, then read and refresh data, then write again!)
 # - not sure if these complex operations can work /w simple app design.
 # #Need to think about this better!
+
+
 @app.post("/insert")
 async def insert(
     response: Response,
@@ -162,6 +174,7 @@ async def insert(
     DB_HOST = insertion_params["host"]
     DB_PORT = insertion_params["port"]
     DB_NAME = insertion_params["database_name"]
+    DB_TYPE = insertion_params["database_type"]
     table_name = insertion_params["table_name"]
     conflict_resolution_strategy = insertion_params[
         "conflict_resolution_strategy"
@@ -176,6 +189,8 @@ async def insert(
 
     # TODO need to clean this up!
     with io.BytesIO(content) as data:
+        if "json" in file.content_type:
+            df = pd.read_json(data)
         if "csv" in file.content_type:
             df = pd.read_csv(data)
         if file.content_type == "text/tab-separated-values":
@@ -184,44 +199,63 @@ async def insert(
             file.content_type == "application/octet-stream"
         ):  # TODO can you have other 'octet-stream'?
             df = pd.read_parquet(data, engine="pyarrow")
-    client = PostgresClient(DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME)
 
-    DTYPE_MAP = {
-        "int64": INTEGER,
-        "float64": FLOAT,
-        "datetime64[ns]": TIMESTAMP,
-        "datetime64[ns, UTC]": TIMESTAMP(timezone=True),
-        "bool": BOOLEAN,
-        "object": VARCHAR,
-    }
+    if DB_TYPE == "google_calendar":
+        client = GoogleCalendarClient()
+        client.create_events(
+            df.to_dict(orient="records"),
+            calendar=DB_NAME,
+            conflict_resolution_strategy=conflict_resolution_strategy,
+            create_calendar=False,
+        )
+    elif DB_TYPE == "pg":
+        client = PostgresClient(
+            DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME
+        )
 
-    def _get_pg_datatypes(df):
-        dtypes = {}
-        for col, dtype in df.dtypes.items():
-            if is_datetime64tz_dtype(dtype):
-                dtypes[col] = DTYPE_MAP["datetime64[ns, UTC]"]
-            else:
-                dtypes[col] = DTYPE_MAP[str(dtype)]
-        return dtypes
+        DTYPE_MAP = {
+            "int64": INTEGER,
+            "float64": FLOAT,
+            "datetime64[ns]": TIMESTAMP,
+            "datetime64[ns, UTC]": TIMESTAMP(timezone=True),
+            "bool": BOOLEAN,
+            "object": VARCHAR,
+        }
 
-    try:
-        client.initialise_client()
-    except db.exc.OperationalError as e:
-        response.status_code = 400  # todo need to get a different error tbh
-        return f"The client does not seem to be fully operational. Error: {e}"
+        def _get_pg_datatypes(df):
+            dtypes = {}
+            for col, dtype in df.dtypes.items():
+                if is_datetime64tz_dtype(dtype):
+                    dtypes[col] = DTYPE_MAP["datetime64[ns, UTC]"]
+                else:
+                    dtypes[col] = DTYPE_MAP[str(dtype)]
+            return dtypes
 
-    dtypes = _get_pg_datatypes(df)
+        try:
+            client.initialise_client()
+        except db.exc.OperationalError as e:
+            response.status_code = (
+                400  # todo need to get a different error tbh
+            )
+            return (
+                f"The client does not seem to be fully operational. Error: {e}"
+            )
 
-    # TODO this is in the case of postgres!
-    df.to_sql(
-        table_name,
-        client.con,
-        schema=dataset_name,
-        if_exists=conflict_resolution_strategy,
-        index=False,
-        method="multi",
-        dtype=dtypes,
-    )
+        dtypes = _get_pg_datatypes(df)
+
+        # TODO this is in the case of postgres!
+        df.to_sql(
+            table_name,
+            client.con,
+            schema=dataset_name,
+            if_exists=conflict_resolution_strategy,
+            index=False,
+            method="multi",
+            dtype=dtypes,
+        )
+    else:
+        response.status_code = 400
+        return f"database_type={DB_TYPE} has no support"
     response.status_code = 201  # TODO technically not correct because we don't
     # always created the asset, sometimes it is simply a 200 response!
 
