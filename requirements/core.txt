@@ -1,6 +1,5 @@
 fastapi[all]==0.99.1
-Flask-SQLAlchemy
-psycopg2-binary
+Flask-SQLAlchemy # what is this being used for?
 pandas
 python-multipart
 PyDrive2

@@ -1,4 +1,4 @@
-from in_n_out.client import PostgresClient
+from in_n_out_clients.postgres_client import PostgresClient
 
 # need support for transactions, need to think of a smart way to chain items
 # together
