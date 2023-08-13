@@ -1,4 +1,7 @@
 # in-n-out
 general purpose data ingestion app
 
-test
+# Run app in dev mode
+```bash
+uvicorn main:app --reload
+```

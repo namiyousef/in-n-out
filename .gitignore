@@ -131,3 +131,12 @@ dmypy.json
 
 # ide specific
 .idea/
+
+# venvs
+venv*/
+
+# secrets
+secrets
+
+# mac
+.DS_Store
