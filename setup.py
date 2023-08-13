@@ -1,4 +1,5 @@
 import codecs
+import json
 import os.path
 
 from setuptools import find_packages, setup
@@ -26,10 +27,11 @@ def parse_requirements(path_to_file):
     return requirements
 
 
-test_packages = ["pytest", "coverage", "pytest-dependency"]
-
 core_packages = parse_requirements("requirements/core.txt")
 private_packages = parse_requirements("requirements/private.txt")
+
+with open("requirements/extra.json") as f:
+    extras_require = json.load(f)
 
 setup(
     name="in_n_out",
@@ -41,7 +43,7 @@ setup(
     author_email="namiyousef@hotmail.com",
     url="https://github.com/namiyousef/in-n-out",
     install_requires=core_packages + private_packages,
-    test_require=test_packages,
+    extras_require=extras_require,
     packages=find_packages(exclude=("tests*", "experiments*")),
     # package_data={'': ['api/specs/api.yaml']},
     include_package_data=True,
