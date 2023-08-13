@@ -1,5 +1,4 @@
 fastapi[all]==0.99.1
-Flask-SQLAlchemy # what is this being used for?
 pandas
 python-multipart
 numpy
