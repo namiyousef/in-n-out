@@ -24,7 +24,7 @@ def get_file_type(file):
         return "csv"
     elif file.content_type == "text/tab-separated-values":
         return "tsv"
-    elif file.content_type == "application/octer-stream":
+    elif file.content_type == "application/octet-stream":
         return "parquet"
 
 
