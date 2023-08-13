@@ -29,6 +29,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
+          export GIT_LINK="https://${GIT_USER}:${GIT_ACCESS_TOKEN}@github.com"
+          git config --global url."${GIT_LINK}".insteadOf "ssh://git@github.com"
           python -m pip install .[test]
       - name: Code Validation Stage
         run: |
