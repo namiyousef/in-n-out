@@ -2,3 +2,4 @@ fastapi[all]==0.99.1
 pandas
 python-multipart
 numpy
+pyarrow
